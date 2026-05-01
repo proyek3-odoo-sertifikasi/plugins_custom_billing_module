@@ -1,0 +1,101 @@
+from odoo import api, fields, models
+import logging
+
+_logger = logging.getLogger(__name__)
+
+
+INVOICE_MOVE_TYPES = {
+    'out_invoice',
+    'out_refund',
+    'out_receipt',
+    'in_invoice',
+    'in_refund',
+    'in_receipt',
+}
+
+
+class AccountMoveLine(models.Model):
+    _inherit = 'account.move.line'
+
+    currency_id = fields.Many2one(
+        related='move_id.currency_id',
+        store=True,
+        readonly=True,
+    )
+    assessee_price_unit = fields.Monetary(
+        string='Assessee Unit Price',
+        currency_field='currency_id',
+        compute='_compute_assessee_price_unit',
+        store=True,
+        readonly=True,
+    )
+
+    def _should_apply_assessee_price(self):
+        self.ensure_one()
+        return bool(
+            not self.display_type
+            and self.product_id
+            and self.move_id
+            and self.move_id.move_type in INVOICE_MOVE_TYPES
+        )
+
+    def _get_assessee_price_unit(self):
+        self.ensure_one()
+        if not self._should_apply_assessee_price():
+            return self.price_unit
+
+        partner = self.move_id.partner_id
+        partner_type = partner.tipe_asesi if partner else 'external'
+        product_tmpl = self.product_id.product_tmpl_id
+
+        price = 0.0
+        if partner_type == 'internal':
+            price = product_tmpl.tarif_internal or 0.0
+        else:
+            price = product_tmpl.tarif_eksternal or 0.0
+        
+        _logger.info(f"[GET_ASSESSEE_PRICE] Product: {product_tmpl.name}, Partner: {partner.name if partner else 'N/A'}, Type: {partner_type}, Price: {price}")
+        return price
+
+    @api.depends(
+        'product_id',
+        'move_id.partner_id',
+        'move_id.partner_id.tipe_asesi',
+        'product_id.product_tmpl_id.tarif_internal',
+        'product_id.product_tmpl_id.tarif_eksternal',
+    )
+    def _compute_assessee_price_unit(self):
+        for line in self:
+            line.assessee_price_unit = line._get_assessee_price_unit() if line._should_apply_assessee_price() else 0.0
+
+    def _apply_assessee_price_unit(self):
+        for line in self:
+            if not line._should_apply_assessee_price():
+                continue
+            new_price = line._get_assessee_price_unit()
+            _logger.info(f"[APPLY_ASSESSEE_PRICE] Updating line {line.id}, old price: {line.price_unit}, new price: {new_price}")
+            super(AccountMoveLine, line.with_context(skip_assessee_price_update=True)).write({
+                'price_unit': new_price,
+            })
+
+    @api.onchange('product_id', 'move_id.partner_id', 'move_id.partner_id.tipe_asesi')
+    def _onchange_product_id_set_assessee_price_unit(self):
+        _logger.info(f"[ONCHANGE] Triggered for line {self.id}")
+        self._apply_assessee_price_unit()
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        _logger.info(f"[CREATE] Creating {len(vals_list)} invoice lines")
+        lines = super().create(vals_list)
+        lines._apply_assessee_price_unit()
+        return lines
+
+    def write(self, vals):
+        if self.env.context.get('skip_assessee_price_update'):
+            return super().write(vals)
+
+        result = super().write(vals)
+        if {'product_id', 'move_id', 'price_unit'} & set(vals):
+            _logger.info(f"[WRITE] Fields changed: {set(vals)}, calling _apply_assessee_price_unit")
+            self._apply_assessee_price_unit()
+        return result

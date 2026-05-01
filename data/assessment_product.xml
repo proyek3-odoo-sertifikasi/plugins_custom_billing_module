@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_assessment_service" model="product.template">
+        <field name="name">Produk Asesmen</field>
+        <field name="default_code">MYCUST_ASSESSMENT</field>
+        <field name="type">service</field>
+        <field name="invoice_policy">order</field>
+        <field name="sale_ok">True</field>
+        <field name="purchase_ok">False</field>
+        <field name="list_price">0.0</field>
+        <field name="tarif_internal">100000.0</field>
+        <field name="tarif_eksternal">200000.0</field>
+    </record>
+    <function model="product.template" name="sync_assessment_product" />
+</odoo>

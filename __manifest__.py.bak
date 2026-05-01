@@ -1,0 +1,23 @@
+{
+    'name': 'Custom Billing Assessment',
+    'version': '19.0.1.0.0',
+    'summary': 'Assessment billing with internal and external pricing tiers',
+    'category': 'Accounting',
+    'author': 'Custom Development',
+    'depends': [
+        'base',
+        'sale_management',
+        'account',
+    ],
+    'data': [
+        'security/ir.model.access.csv',
+        'views/res_partner_views.xml',
+        'views/product_template_views.xml',
+        'views/account_move_views.xml',
+        'views/sale_order_views.xml',
+        'views/sale_order_line_views.xml',
+    ],
+    'installable': True,
+    'application': True,
+    'license': 'LGPL-3',
+}

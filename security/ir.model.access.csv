@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_custom_billing_partner,access_custom_billing_partner,model_res_partner,base.group_user,1,1,1,1
+access_custom_billing_product_template,access_custom_billing_product_template,model_product_template,base.group_user,1,1,1,1
+access_custom_billing_account_move_line,access_custom_billing_account_move_line,model_account_move_line,base.group_user,1,1,1,1

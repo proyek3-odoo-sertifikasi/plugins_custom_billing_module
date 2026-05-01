@@ -1,0 +1,73 @@
+from odoo import api, fields, models
+import logging
+
+_logger = logging.getLogger(__name__)
+
+
+PAYMENT_SETTLEMENT_STATES = [
+    ('no_invoice', 'No Invoice'),
+    ('not_paid', 'Not Paid'),
+    ('in_payment', 'In Payment'),
+    ('partial', 'Partially Paid'),
+    ('paid', 'Paid'),
+    ('reversed', 'Reversed'),
+    ('blocked', 'Blocked'),
+]
+
+
+class SaleOrder(models.Model):
+    _inherit = 'sale.order'
+
+    payment_settlement_state = fields.Selection(
+        selection=PAYMENT_SETTLEMENT_STATES,
+        string='Payment Settlement Status',
+        compute='_compute_payment_settlement_state',
+        store=False,
+    )
+
+    @api.depends('invoice_ids.payment_state', 'invoice_ids.move_type')
+    def _compute_payment_settlement_state(self):
+        priority = {
+            'blocked': 0,
+            'not_paid': 1,
+            'partial': 2,
+            'in_payment': 3,
+            'paid': 4,
+            'reversed': 5,
+        }
+        for order in self:
+            invoices = order.invoice_ids.filtered(lambda move: move.move_type in ('out_invoice', 'out_refund'))
+            if not invoices:
+                order.payment_settlement_state = 'no_invoice'
+                continue
+
+            states = set(invoices.mapped('payment_state'))
+            if states == {'paid'}:
+                order.payment_settlement_state = 'paid'
+                continue
+            if 'in_payment' in states:
+                order.payment_settlement_state = 'in_payment'
+                continue
+            if 'partial' in states:
+                order.payment_settlement_state = 'partial'
+                continue
+            if 'blocked' in states:
+                order.payment_settlement_state = 'blocked'
+                continue
+            if states == {'reversed'}:
+                order.payment_settlement_state = 'reversed'
+                continue
+
+            # Fallback to the most relevant non-paid status.
+            order.payment_settlement_state = min(
+                (state for state in states if state in priority),
+                key=lambda state: priority[state],
+                default='not_paid',
+            )
+
+    def _create_invoices(self, grouped=False, final=False, date=None):
+        """Override to add logging for invoice creation"""
+        _logger.info(f"[CREATE_INVOICES] Called with {len(self)} orders")
+        result = super()._create_invoices(grouped=grouped, final=final, date=date)
+        _logger.info(f"[CREATE_INVOICES] Created {len(result)} invoices")
+        return result

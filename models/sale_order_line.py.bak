@@ -1,0 +1,112 @@
+from odoo import api, fields, models
+import logging
+
+_logger = logging.getLogger(__name__)
+
+
+class SaleOrderLine(models.Model):
+    _inherit = 'sale.order.line'
+
+    currency_id = fields.Many2one(
+        related='order_id.currency_id',
+        store=True,
+        readonly=True,
+    )
+    assessee_price_unit = fields.Monetary(
+        string='Assessee Unit Price',
+        currency_field='currency_id',
+        compute='_compute_assessee_price_unit',
+        store=True,
+        readonly=True,
+    )
+
+    def _get_assessee_tarif(self):
+        self.ensure_one()
+        partner = self.order_id.partner_id if self.order_id else None
+        partner_type = partner.tipe_asesi if partner else 'external'
+        product_tmpl = self.product_id.product_tmpl_id if self.product_id else None
+
+        if not product_tmpl:
+            return 0.0
+
+        if partner_type == 'internal':
+            tarif_value = product_tmpl.tarif_internal or 0.0
+        else:
+            tarif_value = product_tmpl.tarif_eksternal or 0.0
+
+        _logger.info(
+            "[ASSESSEE_TARIF] Product: %s, Partner: %s, Type: %s, Tarif: %s",
+            product_tmpl.name,
+            partner.name if partner else 'N/A',
+            partner_type,
+            tarif_value,
+        )
+        return tarif_value
+
+    @api.depends(
+        'product_id',
+        'order_id.partner_id',
+        'order_id.partner_id.tipe_asesi',
+        'product_id.product_tmpl_id.tarif_internal',
+        'product_id.product_tmpl_id.tarif_eksternal',
+    )
+    def _compute_assessee_price_unit(self):
+        for line in self:
+            if line.product_id and line.order_id and not line.display_type:
+                line.assessee_price_unit = line._get_assessee_tarif()
+            else:
+                line.assessee_price_unit = 0.0
+
+    def _sync_assessee_price_unit(self):
+        for line in self:
+            if line.product_id and line.order_id and not line.display_type:
+                _logger.info(
+                    "[_SYNC_ASSESSEE_PRICE] Line %s, old price: %s, new price: %s",
+                    line.id,
+                    line.price_unit,
+                    line.assessee_price_unit,
+                )
+                super(type(line), line.with_context(skip_assessee_tarif_update=True)).write({
+                    'price_unit': line.assessee_price_unit,
+                })
+
+    @api.onchange('product_id', 'order_id.partner_id', 'order_id.partner_id.tipe_asesi')
+    def _onchange_apply_assessee_tarif(self):
+        if self.product_id and self.order_id:
+            self._compute_assessee_price_unit()
+            _logger.info(
+                "[ONCHANGE_SOL] Line %s, old price: %s, new price: %s",
+                self.id,
+                self.price_unit,
+                self.assessee_price_unit,
+            )
+            self.price_unit = self.assessee_price_unit
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        _logger.info("[CREATE_SOL] Creating %s SO lines, vals: %s", len(vals_list), vals_list)
+        lines = super().create(vals_list)
+        lines._sync_assessee_price_unit()
+        _logger.info("[CREATE_SOL] After tariff sync: %s", [(line.id, line.price_unit) for line in lines])
+        return lines
+
+    def write(self, vals):
+        if self.env.context.get('skip_assessee_tarif_update'):
+            return super().write(vals)
+
+        result = super().write(vals)
+        if {'product_id', 'order_id', 'price_unit'} & set(vals):
+            self._sync_assessee_price_unit()
+        return result
+
+    def _prepare_invoice_line(self, **optional_values):
+        vals = super()._prepare_invoice_line(**optional_values)
+        if self.product_id and self.order_id and not self.display_type:
+            assessee_tarif = self.assessee_price_unit or self._get_assessee_tarif()
+            _logger.info(
+                "[_PREPARE_INVOICE_LINE] Original price_unit: %s, New price_unit: %s",
+                vals.get('price_unit'),
+                assessee_tarif,
+            )
+            vals['price_unit'] = assessee_tarif
+        return vals
