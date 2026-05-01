@@ -350,5 +350,6 @@ LGPL-3 (compatible with Odoo community license)
 
 ## Author
 
-Custom Development Team
+Luthfi Satrio Wicaksono
+Ahmad Fatan Haidar
 Date: May 1, 2026
