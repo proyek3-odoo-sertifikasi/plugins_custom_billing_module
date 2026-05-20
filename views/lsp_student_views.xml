@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_lsp_student_form_inherit_sales" model="ir.ui.view">
+    <field name="name">lsp.student.form.sales</field>
+    <field name="model">lsp.student</field>
+    <field name="inherit_id" ref="plugins_registrasi.view_lsp_student_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//form" position="inside">
+        <header>
+          <button name="action_create_sale_order" type="object" string="Buat Sales Order"
+                  class="btn-primary"
+                  groups="plugins_sales.group_lsp_keuangan"
+              invisible="verification_state != 'verified' or sale_order_id"/>
+          <button name="action_view_sale_order" type="object" string="Lihat Sales Order"
+                  groups="plugins_sales.group_lsp_keuangan"
+              invisible="not sale_order_id"/>
+          <button name="action_view_invoices" type="object" string="Lihat Invoice"
+                  groups="plugins_sales.group_lsp_keuangan"
+              invisible="not sale_order_id"/>
+        </header>
+      </xpath>
+      <xpath expr="//sheet" position="inside">
+        <group string="Verifikasi">
+          <field name="verification_state"/>
+        </group>
+        <group string="Pembayaran" groups="plugins_sales.group_lsp_keuangan">
+          <field name="partner_id"/>
+          <field name="sale_order_id"/>
+          <field name="payment_state" readonly="1"/>
+        </group>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="view_lsp_student_list_inherit_sales" model="ir.ui.view">
+    <field name="name">lsp.student.list.sales</field>
+    <field name="model">lsp.student</field>
+    <field name="inherit_id" ref="plugins_registrasi.view_lsp_student_list"/>
+    <field name="arch" type="xml">
+      <xpath expr="//list" position="inside">
+        <field name="verification_state"/>
+        <field name="payment_state" groups="plugins_sales.group_lsp_keuangan"/>
+        <field name="sale_order_id" groups="plugins_sales.group_lsp_keuangan"/>
+      </xpath>
+    </field>
+  </record>
+</odoo>

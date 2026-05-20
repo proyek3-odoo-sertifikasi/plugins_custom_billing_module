@@ -1,4 +1,5 @@
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -17,6 +18,19 @@ PAYMENT_SETTLEMENT_STATES = [
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
+
+    lsp_student_id = fields.Many2one(
+        'lsp.student',
+        string='Asesi (Student)',
+        ondelete='set null',
+        copy=False,
+    )
+
+    def _is_student_verified(self):
+        self.ensure_one()
+        if not self.lsp_student_id:
+            return True
+        return self.lsp_student_id.verification_state == 'verified'
 
     def _get_assessment_receivable_account(self):
         """Return a dedicated receivable account for assessment invoices, creating it if needed."""
@@ -104,19 +118,31 @@ class SaleOrder(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            student_id = vals.get('lsp_student_id')
+            if student_id and not vals.get('partner_id'):
+                student = self.env['lsp.student'].sudo().browse(student_id)
+                if student.user_id and student.user_id.partner_id:
+                    vals['partner_id'] = student.user_id.partner_id.id
         orders = super().create(vals_list)
         orders._ensure_partner_receivable_account()
         orders._ensure_assessment_line()
         for order in orders:
-            if order._has_assessment_line() and order.state in ('draft', 'sent'):
+            if order._has_assessment_line() and order.state in ('draft', 'sent') and order._is_student_verified():
                 _logger.info('[AUTO_CONFIRM] Confirming assessment SO %s', order.name)
                 order.action_confirm()
+            if order.lsp_student_id and order.lsp_student_id.sale_order_id != order:
+                order.lsp_student_id.sudo().write({'sale_order_id': order.id})
         return orders
 
     def write(self, vals):
         result = super().write(vals)
         if {'partner_id', 'company_id'} & set(vals):
             self._ensure_assessment_line()
+        if 'lsp_student_id' in vals:
+            for order in self.filtered('lsp_student_id'):
+                if order.lsp_student_id.sale_order_id != order:
+                    order.lsp_student_id.sudo().write({'sale_order_id': order.id})
         return result
 
     @api.depends('invoice_ids.payment_state', 'invoice_ids.move_type')
@@ -147,6 +173,9 @@ class SaleOrder(models.Model):
 
     def action_confirm(self):
         """Confirm the order and auto-create the regular invoice."""
+        for order in self:
+            if not order._is_student_verified():
+                raise ValidationError('Asesi belum terverifikasi. Konfirmasi SO dan invoice tidak diizinkan.')
         self._ensure_partner_receivable_account()
         self._ensure_assessment_line()
         result = super().action_confirm()
