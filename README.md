@@ -1,8 +1,8 @@
-# README.md - Custom Billing Assessment Module for Odoo 19
+# README.md - Custom Billing Assessment (plugins_sales) for Odoo 19
 
 ## Overview
 
-**my_custom_modul** is a custom Odoo 19 module for LSP (Learning Service Provider) assessment billing automation. It implements tier-based pricing (internal/external rates) with automatic invoice generation, designed to be safe for deployment alongside other custom modules.
+**plugins_sales** is a custom Odoo 19 module for LSP (Learning Service Provider) assessment billing automation. It implements tier-based pricing (internal/external rates), auto-confirm + auto-invoice, and integrates with `lsp.student` for verification-gated payments.
 
 ## Features
 
@@ -54,6 +54,14 @@ User reviews and posts invoice manually
 - Fallback account selection for invoicing constraints
 - Tested with 57 Odoo modules loaded simultaneously
 
+### 6. **LSP Student Integration (Verification Gate)**
+- Extends `lsp.student` (from `plugins_registrasi`) with:
+  - `verification_state` (draft/submitted/verified/rejected)
+  - `payment_state` (no_invoice/not_paid/paid)
+  - `sale_order_id`
+- Sales Order auto-confirm + invoice are blocked unless `verification_state = verified`
+- Keuangan-only actions: create SO, view SO, view invoice
+
 ## Installation & Configuration
 
 ### Prerequisites
@@ -66,16 +74,16 @@ User reviews and posts invoice manually
 
 1. **Copy Module**
    ```bash
-   cp -r my_custom_modul /path/to/odoo/server/addons/
+  cp -r plugins_sales /path/to/odoo/server/addons/
    ```
 
 2. **Update Module List** (Odoo UI or CLI)
    ```bash
-   python odoo-bin -u my_custom_modul --stop-after-init
+  python odoo-bin -u plugins_sales --stop-after-init
    ```
 
 3. **Install via Odoo UI**
-   - Apps → Search "Custom Billing Assessment" → Install
+  - Apps → Search "Custom Billing Assessment" → Install
 
 4. **Configure Partner Types**
    - Contacts → Select Partner → Field "Tipe Asesi" (Internal/External)
@@ -105,7 +113,7 @@ Partner 2: Perusahaan Eksternal
 
 ## Usage Workflow
 
-### Creating an Assessment Order
+### Creating an Assessment Order (Base Flow)
 
 **Step 1: Create Quotation**
 ```
@@ -168,6 +176,12 @@ Add Product: Produk Asesmen
 - Override: `create()` - Calls _ensure_assessment_line, then auto-confirms if partner exists
 - Override: `action_confirm()` - Auto-creates regular invoice after confirmation
 - New Field: `payment_settlement_state` (Computed, read-only) - Shows invoice payment status
+
+**4. lsp.student (extend via plugins_sales)**
+- New Field: `verification_state`
+- New Field: `payment_state`
+- New Field: `sale_order_id`
+- Actions: create SO, view SO, view invoice
 
 **4. sale.order.line**
 - New Method: `_get_assessee_tarif()` - Returns tariff based on partner.tipe_asesi
@@ -253,7 +267,7 @@ Invoice Line Price: 100000.0
 **Solution:**
 1. Check product has `tarif_internal` and `tarif_eksternal` values
 2. Check partner has `tipe_asesi` set (internal/external)
-3. Run module upgrade to ensure models synced: `python odoo-bin -u my_custom_modul --stop-after-init`
+3. Run module upgrade to ensure models synced: `python odoo-bin -u plugins_sales --stop-after-init`
 
 ### Issue: Invoice creation fails with "violates check constraint"
 
@@ -275,10 +289,10 @@ sudo systemctl stop odoo
 psql -U odoo_user -d odoo_db -c "SELECT * FROM ir_model_data WHERE module='my_custom_modul';"
 
 # Remove module (last resort)
-python odoo-bin --delete-module-data my_custom_modul --stop-after-init
+python odoo-bin --delete-module-data plugins_sales --stop-after-init
 
 # Reinstall
-python odoo-bin -u my_custom_modul --stop-after-init
+python odoo-bin -u plugins_sales --stop-after-init
 ```
 
 ## API Reference
