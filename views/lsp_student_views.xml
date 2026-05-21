@@ -9,13 +9,13 @@
         <header>
           <button name="action_create_sale_order" type="object" string="Buat Sales Order"
                   class="btn-primary"
-                  groups="plugins_sales.group_lsp_keuangan"
+                  groups="plugins_custom_billing_module.group_lsp_keuangan"
               invisible="verification_state != 'verified' or sale_order_id"/>
           <button name="action_view_sale_order" type="object" string="Lihat Sales Order"
-                  groups="plugins_sales.group_lsp_keuangan"
+                  groups="plugins_custom_billing_module.group_lsp_keuangan"
               invisible="not sale_order_id"/>
           <button name="action_view_invoices" type="object" string="Lihat Invoice"
-                  groups="plugins_sales.group_lsp_keuangan"
+                  groups="plugins_custom_billing_module.group_lsp_keuangan"
               invisible="not sale_order_id"/>
         </header>
       </xpath>
@@ -23,7 +23,7 @@
         <group string="Verifikasi">
           <field name="verification_state"/>
         </group>
-        <group string="Pembayaran" groups="plugins_sales.group_lsp_keuangan">
+        <group string="Pembayaran" groups="plugins_custom_billing_module.group_lsp_keuangan">
           <field name="partner_id"/>
           <field name="sale_order_id"/>
           <field name="payment_state" readonly="1"/>
@@ -39,8 +39,8 @@
     <field name="arch" type="xml">
       <xpath expr="//list" position="inside">
         <field name="verification_state"/>
-        <field name="payment_state" groups="plugins_sales.group_lsp_keuangan"/>
-        <field name="sale_order_id" groups="plugins_sales.group_lsp_keuangan"/>
+        <field name="payment_state" groups="plugins_custom_billing_module.group_lsp_keuangan"/>
+        <field name="sale_order_id" groups="plugins_custom_billing_module.group_lsp_keuangan"/>
       </xpath>
     </field>
   </record>
