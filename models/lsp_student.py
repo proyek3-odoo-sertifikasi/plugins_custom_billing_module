@@ -95,8 +95,24 @@ class LSPStudent(models.Model):
         action['domain'] = [('id', 'in', self.sale_order_id.invoice_ids.ids)]
         return action
 
+    def _sync_partner_tipe_asesi(self):
+        for student in self:
+            partner = student.user_id.partner_id if student.user_id else False
+            if partner:
+                new_tipe = 'internal' if student.school == 'smk_negeri_1_rembang' else 'external'
+                if partner.tipe_asesi != new_tipe:
+                    partner.sudo().write({'tipe_asesi': new_tipe})
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        students = super().create(vals_list)
+        students._sync_partner_tipe_asesi()
+        return students
+
     def write(self, vals):
         result = super().write(vals)
+        if 'school' in vals or 'user_id' in vals:
+            self._sync_partner_tipe_asesi()
         if vals.get('verification_state') == 'verified':
             self.filtered(lambda student: not student.sale_order_id).action_create_sale_order()
         return result
