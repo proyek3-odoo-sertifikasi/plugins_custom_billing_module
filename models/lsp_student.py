@@ -64,6 +64,7 @@ class LSPStudent(models.Model):
                 _logger.info('[LSP_STUDENT] Skip SO create for %s due to state %s', student.id, student.verification_state)
                 continue
 
+            student._sync_partner_tipe_asesi()
             partner = student.user_id.partner_id if student.user_id else False
             if not partner:
                 _logger.warning('[LSP_STUDENT] Missing partner for student %s', student.id)
