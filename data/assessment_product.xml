@@ -8,8 +8,8 @@
         <field name="sale_ok">True</field>
         <field name="purchase_ok">False</field>
         <field name="list_price">0.0</field>
-        <field name="tarif_internal">100000.0</field>
-        <field name="tarif_eksternal">200000.0</field>
+        <field name="tarif_internal">0.0</field>
+        <field name="tarif_eksternal">250000.0</field>
     </record>
     <function model="product.template" name="sync_assessment_product" />
 </odoo>

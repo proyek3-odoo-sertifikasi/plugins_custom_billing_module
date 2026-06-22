@@ -24,9 +24,10 @@ class LSPStudent(models.Model):
     _inherit = 'lsp.student'
 
     verification_state = fields.Selection(
-        selection=VERIFICATION_STATES,
+        related='state',
         string='Status Verifikasi',
-        default='submitted',
+        store=True,
+        readonly=False,
     )
     partner_id = fields.Many2one(
         'res.partner',
@@ -60,8 +61,8 @@ class LSPStudent(models.Model):
         for student in self:
             if student.sale_order_id:
                 continue
-            if student.verification_state != 'verified':
-                _logger.info('[LSP_STUDENT] Skip SO create for %s due to state %s', student.id, student.verification_state)
+            if student.state != 'verified':
+                _logger.info('[LSP_STUDENT] Skip SO create for %s due to state %s', student.id, student.state)
                 continue
 
             student._sync_partner_tipe_asesi()
@@ -114,6 +115,6 @@ class LSPStudent(models.Model):
         result = super().write(vals)
         if 'school' in vals or 'user_id' in vals:
             self._sync_partner_tipe_asesi()
-        if vals.get('verification_state') == 'verified':
+        if vals.get('verification_state') == 'verified' or vals.get('state') == 'verified':
             self.filtered(lambda student: not student.sale_order_id).action_create_sale_order()
         return result

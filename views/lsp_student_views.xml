@@ -20,9 +20,6 @@
         </header>
       </xpath>
       <xpath expr="//sheet" position="inside">
-        <group string="Verifikasi">
-          <field name="verification_state"/>
-        </group>
         <group string="Pembayaran" groups="plugins_custom_billing_module.group_lsp_keuangan">
           <field name="partner_id"/>
           <field name="sale_order_id"/>
@@ -38,7 +35,6 @@
     <field name="inherit_id" ref="plugins_registrasi.view_lsp_student_list"/>
     <field name="arch" type="xml">
       <xpath expr="//list" position="inside">
-        <field name="verification_state"/>
         <field name="payment_state" groups="plugins_custom_billing_module.group_lsp_keuangan"/>
         <field name="sale_order_id" groups="plugins_custom_billing_module.group_lsp_keuangan"/>
       </xpath>

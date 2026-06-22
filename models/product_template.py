@@ -11,8 +11,8 @@ ASSESSMENT_PRODUCT_VALUES = {
     'sale_ok': True,
     'purchase_ok': False,
     'list_price': 0.0,
-    'tarif_internal': 100000.0,
-    'tarif_eksternal': 200000.0,
+    'tarif_internal': 0.0,
+    'tarif_eksternal': 250000.0,
 }
 
 
